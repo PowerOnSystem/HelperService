@@ -1,0 +1,35 @@
+{
+    "name": "poweronsystem/helperservice",
+    "type": "library",
+    "description": "Servicio de ayudantes en la escritura html.",
+    "keywords": ["helper", "html writer", "html easy"],
+    "homepage": "https://github.com/poweronsystem/helperservice",
+    "license": "GPL",
+    "authors": [
+        {
+            "name": "Lucas Sosa",
+            "email": "sosalucas87@gmail.com",
+            "homepage": "http://www.poweronsistemas.com.ar",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=5.4",
+        "poweronsystem/webutility": "^0.1.0",
+        "pimple/pimple": "^3.0"
+    },
+    "require-dev": {
+        "kint-php/kint": "^2.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "PowerOn\\Helper\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "App\\": "test"
+        }
+    }
+    
+}
