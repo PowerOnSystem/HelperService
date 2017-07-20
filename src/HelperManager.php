@@ -72,15 +72,16 @@ class HelperManager {
     /**
      * Devuelve el Helper solicitado
      * @param string $name Nombre del helper
-     * @return \PowerOn\Helper\Helper
+     * @return Helper
      * @throws \Exception
      */
     public function getHelper($name) {
         if ( !$this->helperExist($name) ) {
             throw new \Exception(sprintf('El Helper (%s) solicitado no fue cargado.', $name));
         }
-        
-        return $this->_container[$name];
+        $helper = $this->_container[$name];
+        $helper->configure([]);
+        return $helper;
     }
     
     /**

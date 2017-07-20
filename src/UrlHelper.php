@@ -18,7 +18,6 @@
  */
 
 namespace PowerOn\Helper;
-use PowerOn\Utility\Arr;
 
 /**
  * UrlHelper
@@ -38,7 +37,9 @@ class UrlHelper extends Helper {
             'request_queries' => filter_input(INPUT_SERVER, 'QUERY_STRINGS', FILTER_SANITIZE_STRING),
             'request_controller' => FALSE,
             'request_action' => FALSE,
-            'root_dir' => NULL
+            'root_dir' => NULL,
+            'default_controller' => 'index',
+            'default_action' => 'index'
         ] + $config;
         
         if ( $this->_config['request_controller'] === FALSE || $this->_config['request_action'] === FALSE) {
@@ -51,100 +52,33 @@ class UrlHelper extends Helper {
     /**
      * Crea una URL nueva a partir de los datos entregados
      * formato ['controller' => 'users', 'action' => 'messages', 'param1', 'param2']
-     * puede especificar las queries de la url ej: ['query' => ['foo' => 'bar', 'foo2' => 'bar2']]
+     * puede especificar las queries de la url ej: ['?' => ['foo' => 'bar', 'foo2' => 'bar2']]
      * @param array $url
      * @return string
      */
     public function build( array $url = []) {        
         $vars = [];
         foreach ($url as $k => $u) {
-            if ($k !== 'controller' && $k !== 'action' && $k !== 'query') {
+            if ( !in_array((string)$k, ['controller', 'action', '?', '#']) ) {
                 $vars[] = $u;
             }
         }
-        
-        $gets = key_exists('query', $url) ? $url['query'] : [];
+
+        $gets = key_exists('?', $url) && is_array($url['?']) ? $url['?'] : [];
         array_walk($gets, function(&$v, $k) {
             $v = $k . '=' . $v;
         });
+        
+        $anchor = key_exists('#', $url) && is_string($url['#']) ? $url['#'] : NULL;
         
         $result = ($this->_config['root_dir'] ? '/' . $this->_config['root_dir'] : '') 
-            . ( key_exists('controller', $url) ? '/' . $url['controller'] : (key_exists('action', $url) ? '/index' : ''))
-            . ( key_exists('action', $url) ? '/' . $url['action'] : ($vars ? 'index' : '') )
+            . ( key_exists('controller', $url) ? '/' . $url['controller'] : 
+                    (key_exists('action', $url) || $vars ? '/' . $this->_config['default_controller'] : ''))
+            . ( key_exists('action', $url) ? '/' . $url['action'] : ($vars ? '/' . $this->_config['default_action'] : '') )
             . ( $vars ? '/' . implode('/', $vars) : '' )
-            . ( $gets ? '/?' . implode('&', $gets) : '' );
+            . ( $gets ? '/?' . implode('&', $gets) : '' )
+            . ( $anchor ? '#' . $anchor : '' );
         
         return $result ? $result : '/';
-    }
-    
-    /**
-     * Modifica una URL agregando o quitando variables,
-     * puede modificar las queries de la url ej: ['query' => ['foo' => 'bar', 'foo2' => 'bar2']]
-     * @param array $add [Opcional] la URL a agregar
-     * @param array $remove [Opcional] la URL a remover
-     * @return string
-     */
-    public function modify(array $add = [], array $remove = [], $controller = NULL, $action = NULL) {
-        $path = explode('/', $this->_config['request_path']);
-        
-        $gets_remove = key_exists('query', $remove) ? $remove['query'] : [];
-        if (key_exists('query', $remove)) {
-            unset($remove['query']);
-        }
-        
-        $url = array_filter(array_diff_key($path, array_fill_keys($remove, FALSE), $add) + $add, function ($var) {
-            return ($var !== NULL && $var !== FALSE && $var !== '');
-        });
-        
-        $gets_request = key_exists('query', $url) ? $url['query'] : [];
-        
-        if (key_exists('query', $url)) {
-            unset($url['query']);
-        }
-
-        ksort($url);
-        array_walk($url, function(&$v, $k) {
-            $v = (is_string($k) ? $k . '=' : '') . $v;
-        });
-        
-        $url_controller = $controller ? $controller : $this->_config['request_controller'];
-        $url_action = $action ? $action : $this->_config['request_action'];
-        
-        $last_url = ($this->_config['root_dir'] ? '/' . $this->_config['root_dir'] : '') . 
-            '/' . ( $url_action == 'index' && $url_controller == 'index' && !$url ? '' : $url_controller . '/' ) .
-            ( ($url_action == 'index' && $url) || $url_action != 'index' ? $url_action . '/' : '' ) . 
-            implode('/', $url);
-        
-        $gets = $gets_request + $this->_config['request_queries'];
-        foreach ($gets_remove as $gr) {
-            if (key_exists($gr, $gets)) {
-                unset($gets[$gr]);
-            }
-        } 
-        array_walk($gets, function(&$v, $k) {
-            $v = $k . '=' . $v;
-        });
-        
-        return $last_url . ($gets ? (substr($last_url, -1) == '/' ? '' : '/') . '?' . implode('&', $gets) : '');
-    }
-    
-    /**
-     * Agrega un valor al final de la url
-     * @param array $push la URL a agregar al final (Si se quiere agregar queries: ['query' => ['foo' => 'bar', 'foo2' => 'bar2']]
-     * @return string
-     */
-    public function push(array $push = []) {
-        $query = [];
-        if ( key_exists('query', $push) ) {
-            $query = Arr::trim($push, 'query');
-            array_walk($query, function(&$v, $k) {
-                $v = $k . '=' . $v;
-            });
-        }
-        $path = substr($this->_config['request_path'], -1) == '/' ? 
-                substr($this->_config['request_path'], 0, strlen($this->_config['request_path']) - 1) :
-                $this->_config['request_path'];
-        return ($this->_config['root_dir'] ? '/' . $this->_config['root_dir'] : '') . '/' . $path . '/' . implode('/', $push) .
-                ( $query ? '/?' . implode('&', $query) : '' );
     }
 }
