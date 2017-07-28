@@ -10,5 +10,5 @@ $manager->loadHelper('custom', 'App\Helpers\\');
 /* @var $url PowerOn\Helper\UrlHelper */
 $url = $manager->getHelper('url');
 
-d($url->build(['one', 'two', 'action' => 'peperoni', '?' => ['right' => 'toleft', 'miami' => 'beach'], '#' => 'tar.tgz']));
+d($url->modify(['sable', 'pistola']));
 //$url->configure();

@@ -81,4 +81,82 @@ class UrlHelper extends Helper {
         
         return $result ? $result : '/';
     }
+    
+    /**
+     * Modifica una URL agregando o quitando variables
+     * @param array $add [Opcional] la URL a agregar
+     * @param array $remove [Opcional] la URL a remover
+     * @return string
+     */
+    public function modify(array $add = [], array $remove = [], $controller = NULL, $action = NULL) {
+        $url_splitted = explode('?', $this->_config['request_path']);
+        $path = array_filter(explode('/', reset($url_splitted)));
+
+        $gets_remove = key_exists('query', $remove) ? $remove['query'] : [];
+        if (key_exists('query', $remove)) {
+            unset($remove['query']);
+        }
+        
+        $url = array_filter(array_diff_key($path, array_fill_keys($remove, FALSE), $add) + $add, function ($var) {
+            return ($var !== NULL && $var !== FALSE && $var !== '');
+        });
+        
+        $gets_request = key_exists('query', $url) ? $url['query'] : [];
+        
+        if (key_exists('query', $url)) {
+            unset($url['query']);
+        }
+
+        ksort($url);
+        array_walk($url, function(&$v, $k) {
+            $v = (is_string($k) ? $k . '-' : '') . $v;
+        });
+        
+        $url_controller = $controller ? $controller : $this->_config['request_controller'];
+        $url_action = $action ? $action : $this->_config['request_action'];
+
+        $last_url = ($this->_config['root_dir'] ? '/' . $this->_config['root_dir'] : '') . 
+            '/' . ( ($url_action == $this->_config['default_action'] && 
+                $url_controller == $this->_config['default_controller'] && !$url)
+                || ($this->_config['request_controller'] === NULL && $this->_config['request_action'] === NULL) ? '' : $url_controller . '/' ) .
+            ( ($url_action == $this->_config['default_action'] && $url) || $url_action
+                != $this->_config['default_action'] ? $url_action . '/' : '' ) . 
+            implode('/', $url);
+        
+        $queries = array_filter(explode('&', $this->_config['request_queries']));
+        $queries_keys = array_map(function($v){ $e = explode('=', $v); return $e[0]; }, $queries);
+        $queries_vals = array_map(function($v){ $e = explode('=', $v); return $e[1]; }, $queries);
+        
+        $gets = $gets_request + array_combine($queries_keys, $queries_vals);
+        foreach ($gets_remove as $gr) {
+            if (key_exists($gr, $gets)) {
+                unset($gets[$gr]);
+            }
+        } 
+        array_walk($gets, function(&$v, $k, $path) {
+            $v = $k . '=' . ($k == 'return' ? base64_encode($path) : $v);
+        }, $this->_config['request_path']);
+        
+        return $last_url . ($gets ? (substr($last_url, -1) == '/' ? '' : '/') . '?' . implode('&', $gets) : '');
+    }
+    
+    /**
+     * Agrega un valor al final de la url
+     * @param array $push la URL a agregar al final
+     * @return string
+     */
+    public function push(array $push = array()) {
+        $query = array();
+        if ( key_exists('query', $push) ) {
+            $query = \CNCService\Core\CNCServiceArrayTrim($push, 'query');
+            array_walk($query, function(&$v, $k, $path) {
+                $v = $k . '=' . ($k == 'return' ? base64_encode($path) : $v);
+            }, $this->_request->full_path);
+        }
+        $path = substr($this->_request->path, -1) == '/' ? 
+                substr($this->_request->path, 0, strlen($this->_request->path) - 1) :
+                $this->_request->path;
+        return ($this->_config['root_dir'] ? '/' . $this->_config['root_dir'] : '') . '/' . $path . '/' . implode('/', $push) .
+                ( $query ? '/?' . implode('&', $query) : '' );
+    }
 }
